@@ -64,6 +64,9 @@ export class SocketEventHandler {
    */
   private handleJoinRoom(socket: Socket, roomId: string): void {
     try {
+      // Cancel any scheduled deletion for this room (in case of reconnection)
+      this.roomManager.cancelRoomDeletion(roomId);
+
       const gameState = this.roomManager.joinRoom(roomId, socket.id);
       socket.join(roomId);
 
@@ -213,11 +216,15 @@ export class SocketEventHandler {
   private handleDisconnect(socket: Socket): void {
     logger.info('Client disconnected', { socketId: socket.id });
 
-    const deletedRooms = this.roomManager.cleanupPlayerRooms(socket.id);
+    // Find room but don't delete immediately
+    const roomId = this.roomManager.findRoomByPlayer(socket.id);
 
-    deletedRooms.forEach((roomId) => {
+    if (roomId) {
+      // Schedule deletion after 30 seconds instead of immediate deletion
+      // This allows for reconnections and page transitions
+      this.roomManager.scheduleRoomDeletion(roomId, 30000);
       this.io.to(roomId).emit(SOCKET_EVENTS.PLAYER_DISCONNECTED);
-    });
+    }
   }
 
   /**

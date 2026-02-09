@@ -5,9 +5,11 @@ import { logger } from './logger';
 
 export class GameRoomManager {
   private rooms: Map<string, GameState>;
+  private roomTimeouts: Map<string, NodeJS.Timeout>;
 
   constructor() {
     this.rooms = new Map();
+    this.roomTimeouts = new Map();
   }
 
   /**
@@ -120,5 +122,38 @@ export class GameRoomManager {
    */
   getRoomCount(): number {
     return this.rooms.size;
+  }
+
+  /**
+   * Schedule room deletion with delay
+   */
+  scheduleRoomDeletion(roomId: string, delayMs: number = 30000): void {
+    // Cancel existing timeout if any
+    const existingTimeout = this.roomTimeouts.get(roomId);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+    }
+
+    // Schedule deletion
+    const timeout = setTimeout(() => {
+      this.deleteRoom(roomId);
+      this.roomTimeouts.delete(roomId);
+      logger.info(`Room auto-deleted after timeout: ${roomId}`);
+    }, delayMs);
+
+    this.roomTimeouts.set(roomId, timeout);
+    logger.debug(`Room deletion scheduled: ${roomId} (${delayMs}ms)`);
+  }
+
+  /**
+   * Cancel scheduled room deletion
+   */
+  cancelRoomDeletion(roomId: string): void {
+    const timeout = this.roomTimeouts.get(roomId);
+    if (timeout) {
+      clearTimeout(timeout);
+      this.roomTimeouts.delete(roomId);
+      logger.debug(`Room deletion cancelled: ${roomId}`);
+    }
   }
 }
