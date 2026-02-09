@@ -19,7 +19,8 @@ const GameRoom: React.FC = () => {
   useEffect(() => {
     if (!roomId || typeof roomId !== 'string') return;
 
-    const newSocket = io('http://localhost:3000', {
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3000';
+    const newSocket = io(socketUrl, {
       transports: ['websocket'],
     });
 
